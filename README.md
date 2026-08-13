@@ -1,5 +1,12 @@
 # Meta Muse Glimmer 30B Runpod Serverless worker
 
+[![Publish worker image](https://github.com/cezaronx/muse-glimmer-runpod/actions/workflows/publish-image.yml/badge.svg)](https://github.com/cezaronx/muse-glimmer-runpod/actions/workflows/publish-image.yml)
+
+Public reference implementation for serving Meta Muse Glimmer 30B through a
+Runpod Serverless load-balancing endpoint. This repository contains worker
+software and deployment documentation only; it does not contain model
+weights, Runpod credentials, registry credentials, or private lab data.
+
 This bundle is a CUDA worker for Meta's official Muse Glimmer GGUF release. It
 runs `llama-server` directly as a Runpod Serverless load-balancing worker, so
 the exposed port is a real OpenAI-compatible HTTP API rather than a queue
@@ -137,6 +144,17 @@ tool-call correctness: inspect that the response contains a structured
    it is an intentionally isolated simulated target. Add request/response
    logging with secrets and image data redacted, and retain the `/metrics`
    series for latency, errors, and speculative acceptance.
+
+## Public reuse
+
+Forks and derivative workers are welcome. Read `LICENSE`,
+`THIRD_PARTY_NOTICES.md`, and the model repository's terms before
+redistributing the image or using the model commercially. Never commit API
+keys, registry tokens, Hugging Face tokens, cached model files, private volume
+details, or request logs containing user data.
+
+See `CONTRIBUTING.md` for changes and `SECURITY.md` for private vulnerability
+reports.
 
 ## Exact assumptions and risks
 
