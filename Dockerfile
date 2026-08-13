@@ -45,7 +45,10 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         bash \
         ca-certificates \
+        libgcc-s1 \
+        libgomp1 \
         libcurl4 \
+        libstdc++6 \
         openssh-server \
         python3 \
         python3-pip \
