@@ -106,6 +106,22 @@ The static check is always safe to run:
 python .\validate_worker.py
 ```
 
+## First OpenAI-compatible request
+
+The endpoint is a Serverless load balancer, so send requests directly to its
+HTTP API rather than `/run` or `/runsync`. The probe asks for the Runpod key
+with hidden local input and never writes it to the repository:
+
+```powershell
+python .\openai_probe.py
+```
+
+Override the endpoint or prompt without editing the script:
+
+```powershell
+python .\openai_probe.py --endpoint 80ooydmc06vh70 --prompt "Give me a simple spaghetti sauce recipe."
+```
+
 A real inference smoke test requires a CUDA-capable Linux host and the three
 GGUF files. After building the image, mount a disposable directory as
 `/runpod-volume`, set `HF_TOKEN` only if needed, and let the container download
