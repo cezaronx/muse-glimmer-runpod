@@ -134,12 +134,17 @@ async def resolve_target(
         if mode == "pod":
             raise RuntimeError(pod_error or "No healthy manually started Pod found")
 
-    if not await ping(client, SERVERLESS_BASE, serverless_headers):
-        raise RuntimeError("Neither the manually started Pod nor Serverless is healthy")
+    # Do not preflight Serverless with /ping. A load-balancing endpoint can
+    # legitimately have zero warm workers before a request arrives; probing
+    # /ping in that state rejects the request locally and prevents Runpod from
+    # ever receiving the request that would trigger worker allocation. Send
+    # the real OpenAI-compatible request and let Runpod report capacity or
+    # worker errors directly.
     return SERVERLESS_BASE, "serverless", serverless_headers, {
         "model": model_id,
         "pod": pod_info.as_dict() if pod_info else None,
         "pod_error": pod_error,
+        "preflight": "skipped",
     }
 
 
@@ -318,3 +323,4 @@ async def proxy(path: str, request: Request):
         media_type="text/event-stream",
         headers=provenance_headers(model_id, backend, request_id, fallback),
     )
+
