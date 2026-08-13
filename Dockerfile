@@ -24,9 +24,11 @@ RUN git clone --depth 1 --branch "${LLAMA_CPP_REF}" https://github.com/ggml-org/
         -DCMAKE_CUDA_ARCHITECTURES="${CUDA_ARCHITECTURES}" \
         -DGGML_CUDA=ON \
         -DLLAMA_CURL=ON \
-        -DBUILD_SHARED_LIBS=OFF \
-    && cmake --build /opt/llama.cpp/build --config Release --parallel "${BUILD_JOBS}" --target llama-server \
-    && test -x /opt/llama.cpp/build/bin/llama-server
+        -DBUILD_SHARED_LIBS=OFF
+
+RUN cmake --build /opt/llama.cpp/build --config Release --parallel "${BUILD_JOBS}" --target llama-server
+
+RUN test -x /opt/llama.cpp/build/bin/llama-server
 
 FROM nvidia/cuda:12.8.1-runtime-ubuntu22.04
 
