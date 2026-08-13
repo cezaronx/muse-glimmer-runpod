@@ -6,7 +6,19 @@ on:
       tag:
         description: Image tag
         required: true
-        default: pod-startup-fix-20260813
+        default: blackwell-fix-20260813
+      llama_cpp_ref:
+        description: llama.cpp git tag
+        required: true
+        default: b10375
+      cuda_architectures:
+        description: CUDA architectures compiled into llama-server
+        required: true
+        default: '80;86;89;90;100;120'
+      build_jobs:
+        description: Parallel CUDA compiler jobs
+        required: true
+        default: '4'
 
 env:
   REGISTRY: ghcr.io
@@ -48,6 +60,10 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.tag }}
+          build-args: |
+            LLAMA_CPP_REF=${{ inputs.llama_cpp_ref }}
+            CUDA_ARCHITECTURES=${{ inputs.cuda_architectures }}
+            BUILD_JOBS=${{ inputs.build_jobs }}
           cache-from: type=gha
           cache-to: type=gha,mode=min
 
@@ -55,3 +71,4 @@ jobs:
         run: |
           docker buildx imagetools inspect \
             "${REGISTRY}/${IMAGE_NAME}:${{ inputs.tag }}"
+
