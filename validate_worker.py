@@ -25,8 +25,8 @@ def main() -> None:
     build_script = (ROOT / "build-image.ps1").read_text(encoding="utf-8")
     publish_script = (ROOT / "publish-image.ps1").read_text(encoding="utf-8")
 
-    require(dockerfile, "ARG LLAMA_CPP_REF=b10375", ROOT / "Dockerfile")
-    require(dockerfile, "-DGGML_CUDA=ON", ROOT / "Dockerfile")
+    require(dockerfile, "ARG BASE_IMAGE=", ROOT / "Dockerfile")
+    require(dockerfile, "FROM ${BASE_IMAGE}", ROOT / "Dockerfile")
     require(dockerfile, "COPY proxy.py", ROOT / "Dockerfile")
     require(dockerfile, "llama-server", ROOT / "Dockerfile")
     for fragment in (
@@ -45,11 +45,16 @@ def main() -> None:
         "--metrics",
         '"/ping"',
         "status_code=204",
+        "llama-server exited with return code",
+        "MODEL_LOAD_TIMEOUT_SECONDS",
+        "did not become healthy within",
+        "llama-server is not running",
+        "llama-server is unavailable",
         "StreamingResponse",
         "draft-dflash",
     ):
         require(proxy, fragment, ROOT / "proxy.py")
-    for fragment in ("--tag", "LLAMA_CPP_REF", "CUDA_ARCHITECTURES", "DOCKER_CONFIG", "This script does not push"):
+    for fragment in ("--tag", "LLAMA_CPP_REF", "CUDA_ARCHITECTURES", "DOCKER_CONFIG", "This script never pushes"):
         require(build_script, fragment, ROOT / "build-image.ps1")
     for fragment in ("--platform", "linux/amd64", "--push", "PUBLISH", "docker login"):
         require(publish_script, fragment, ROOT / "publish-image.ps1")

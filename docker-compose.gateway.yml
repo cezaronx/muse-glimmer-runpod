@@ -1,0 +1,44 @@
+services:
+  muse-gateway:
+    build:
+      context: ./gateway
+    env_file:
+      - /home/mverkoo/.config/muse-glimmer/.env
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8787:8787"
+    networks:
+      - infrastructure
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=infrastructurecontainers_infrastructure_default"
+      - "traefik.http.routers.muse-gateway.rule=Host(`glimmer.local`)"
+      - "traefik.http.routers.muse-gateway.entrypoints=websecure"
+      - "traefik.http.routers.muse-gateway.tls=true"
+      - "traefik.http.routers.muse-gateway.tls.certresolver=localresolver"
+      - "traefik.http.routers.muse-gateway.middlewares=lan-only"
+      - "traefik.http.services.muse-gateway.loadbalancer.server.port=8787"
+    volumes:
+      - "${POD_SSH_KEY_PATH:-/home/mverkoo/.ssh/id_ed25519}:/run/secrets/muse-pod-ssh-key:ro"
+      - muse-gateway-ssh-known-hosts:/root/.ssh
+    environment:
+      SERVERLESS_BASE_URL: ${SERVERLESS_BASE_URL:-https://80ooydmc06vh70.api.runpod.ai}
+      RUNPOD_POD_TEMPLATE_ID: ${RUNPOD_POD_TEMPLATE_ID:-vof7vdwzcw}
+      RUNPOD_POD_DATA_CENTER: ${RUNPOD_POD_DATA_CENTER:-EU-RO-1}
+      RUNPOD_NETWORK_VOLUME_ID: ${RUNPOD_NETWORK_VOLUME_ID:-0dvyrxzx4s}
+      POD_INTERNAL_PORT: ${POD_INTERNAL_PORT:-8000}
+      BACKEND_MODE: ${BACKEND_MODE:-auto}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://windows.tail9a46d1.ts.net:11434}
+      GATEWAY_TOKEN: ${GATEWAY_TOKEN:-}
+      POD_SSH_KEY_PATH: /run/secrets/muse-pod-ssh-key
+      POD_SSH_USER: ${POD_SSH_USER:-root}
+      POD_SSH_KNOWN_HOSTS: /root/.ssh/known_hosts
+      POD_SSH_STRICT_HOST_KEY_CHECKING: ${POD_SSH_STRICT_HOST_KEY_CHECKING:-accept-new}
+
+volumes:
+  muse-gateway-ssh-known-hosts:
+
+networks:
+  infrastructure:
+    external: true
+    name: infrastructurecontainers_infrastructure_default

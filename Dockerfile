@@ -15,6 +15,7 @@ RUN apt-get update \
         libgcc-s1 \
         libgomp1 \
         libstdc++6 \
+        openssh-server \
     && rm -rf /var/lib/apt/lists/*
 
 COPY start.sh /usr/local/bin/muse-glimmer-start
@@ -23,5 +24,5 @@ RUN chmod 0755 /usr/local/bin/muse-glimmer-start \
     && test -x /opt/llama-server \
     && test -f /opt/muse-glimmer-proxy.py
 
-EXPOSE 8000
+EXPOSE 8000 22
 ENTRYPOINT ["/usr/local/bin/muse-glimmer-start"]

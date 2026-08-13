@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import signal
 import subprocess
@@ -15,10 +16,13 @@ from fastapi import FastAPI, Request, Response
 from fastapi.responses import StreamingResponse
 
 
+LOGGER = logging.getLogger("muse.worker")
 LLAMA_BASE = f"http://127.0.0.1:{os.environ.get('LLAMA_SERVER_PORT', '8080')}"
 OUTER_PORT = int(os.environ.get("PORT", "8000"))
 PROCESS: subprocess.Popen[bytes] | None = None
 CLIENT: httpx.AsyncClient | None = None
+PROCESS_WATCHER: asyncio.Task[None] | None = None
+STARTUP_WATCHER: asyncio.Task[None] | None = None
 
 
 def llama_command() -> list[str]:
@@ -31,6 +35,8 @@ def llama_command() -> list[str]:
         "--spec-draft-ngl", os.environ.get("LLAMA_DRAFT_N_GPU_LAYERS", "all"),
         "--spec-draft-n-max", os.environ.get("LLAMA_DRAFT_N_MAX", "3"),
         "--gpu-layers", os.environ.get("LLAMA_N_GPU_LAYERS", "all"),
+        # Keep the image hardware-agnostic. Deployment profiles should set
+        # LLAMA_CONTEXT_SIZE/CONTEXT_SIZE explicitly for their GPU budget.
         "--ctx-size", os.environ.get("LLAMA_CONTEXT_SIZE", "131072"),
         "--parallel", os.environ.get("LLAMA_PARALLEL_SLOTS", "1"),
         "--host", "127.0.0.1",
@@ -47,12 +53,47 @@ def llama_command() -> list[str]:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    global PROCESS, CLIENT
+    global PROCESS, CLIENT, PROCESS_WATCHER, STARTUP_WATCHER
     PROCESS = subprocess.Popen(llama_command())
     CLIENT = httpx.AsyncClient(timeout=None)
+
+    async def stop_worker(message: str) -> None:
+        LOGGER.error(message)
+        if PROCESS is not None and PROCESS.poll() is None:
+            PROCESS.terminate()
+            try:
+                await asyncio.to_thread(PROCESS.wait, 10)
+            except subprocess.TimeoutExpired:
+                PROCESS.kill()
+
+    async def watch_process() -> None:
+        assert PROCESS is not None
+        return_code = await asyncio.to_thread(PROCESS.wait)
+        LOGGER.error("llama-server exited with return code %s; worker is unhealthy", return_code)
+        # Let Runpod mark this worker unhealthy instead of keeping a proxy
+        # alive with no model behind it.
+        os.kill(os.getpid(), signal.SIGTERM)
+
+    async def watch_startup() -> None:
+        timeout = float(os.environ.get("MODEL_LOAD_TIMEOUT_SECONDS", "600"))
+        deadline = asyncio.get_running_loop().time() + timeout
+        while PROCESS is not None and PROCESS.poll() is None:
+            if asyncio.get_running_loop().time() >= deadline:
+                await stop_worker(
+                    f"llama-server did not become healthy within {timeout:.0f} seconds"
+                )
+                return
+            await asyncio.sleep(2)
+
+    PROCESS_WATCHER = asyncio.create_task(watch_process())
+    STARTUP_WATCHER = asyncio.create_task(watch_startup())
     try:
         yield
     finally:
+        if PROCESS_WATCHER is not None:
+            PROCESS_WATCHER.cancel()
+        if STARTUP_WATCHER is not None:
+            STARTUP_WATCHER.cancel()
         if CLIENT is not None:
             await CLIENT.aclose()
         if PROCESS is not None and PROCESS.poll() is None:
@@ -70,7 +111,7 @@ app = FastAPI(lifespan=lifespan)
 async def ping() -> Response:
     """Return 204 while loading and 200 once llama.cpp is healthy."""
     if PROCESS is None or PROCESS.poll() is not None or CLIENT is None:
-        return Response(status_code=500)
+        return Response(status_code=503, content=b"llama-server is not running")
     try:
         upstream = await CLIENT.get(f"{LLAMA_BASE}/health")
     except httpx.HTTPError:
@@ -99,8 +140,8 @@ def is_streaming(request: Request, body: bytes) -> bool:
 async def forward(path: str, request: Request):
     if path == "ping":
         return await ping()
-    if CLIENT is None:
-        return Response(status_code=503, content=b"worker is starting")
+    if PROCESS is None or PROCESS.poll() is not None or CLIENT is None:
+        return Response(status_code=503, content=b"llama-server is not running")
     body = await request.body()
     headers = forwarded_headers(request)
     url = f"{LLAMA_BASE}/{path}"
@@ -111,7 +152,11 @@ async def forward(path: str, request: Request):
                 async for chunk in upstream.aiter_raw():
                     yield chunk
         return StreamingResponse(stream(), media_type="text/event-stream")
-    upstream = await CLIENT.request(request.method, url, headers=headers, content=body)
+    try:
+        upstream = await CLIENT.request(request.method, url, headers=headers, content=body)
+    except httpx.HTTPError as exc:
+        LOGGER.error("llama-server request failed: %s", exc)
+        return Response(status_code=503, content=b"llama-server is unavailable")
     response_headers = {
         k: v for k, v in upstream.headers.items()
         if k.lower() not in {"content-length", "transfer-encoding", "connection"}

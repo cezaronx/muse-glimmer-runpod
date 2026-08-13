@@ -7,6 +7,34 @@ log() {
     printf '[muse-glimmer] %s\n' "$*"
 }
 
+configure_ssh() {
+    [[ "${ENABLE_SSHD:-1}" == "1" ]] || return 0
+    command -v sshd >/dev/null 2>&1 || die "sshd is missing from the image"
+    local public_key="${PUBLIC_KEY:-${RUNPOD_PUBLIC_KEY:-}}"
+    if [[ -z "${public_key}" ]]; then
+        log "WARNING: no Runpod-injected public key; SSH transport will be unavailable"
+    else
+        install -d -m 0700 /root/.ssh
+        printf '%s\n' "${public_key}" > /root/.ssh/authorized_keys
+        chmod 0600 /root/.ssh/authorized_keys
+    fi
+    mkdir -p /run/sshd
+    ssh-keygen -A >/dev/null 2>&1
+    cat > /etc/ssh/sshd_config.d/muse-glimmer.conf <<'EOF'
+Port 22
+PermitRootLogin prohibit-password
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PubkeyAuthentication yes
+UsePAM no
+X11Forwarding no
+AllowTcpForwarding yes
+GatewayPorts no
+EOF
+    /usr/sbin/sshd
+    log "SSH transport enabled on port 22 (key-only, forwarding allowed)"
+}
+
 die() {
     printf '[muse-glimmer] ERROR: %s\n' "$*" >&2
     exit 1
@@ -32,6 +60,7 @@ log "Entrypoint started"
 command -v python3 >/dev/null 2>&1 || die "python3 is missing from the image"
 command -v hf >/dev/null 2>&1 || die "hf CLI is missing from the image"
 [[ -x /opt/llama-server ]] || die "llama-server is missing from the image"
+configure_ssh
 
 if [[ ! -d /runpod-volume && "${ALLOW_EPHEMERAL_MODEL_CACHE:-0}" != "1" ]]; then
     die "Runpod network volume is not mounted at /runpod-volume; set ALLOW_EPHEMERAL_MODEL_CACHE=1 only for disposable tests"

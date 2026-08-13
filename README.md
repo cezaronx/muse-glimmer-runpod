@@ -8,15 +8,16 @@ software and deployment documentation only; it does not contain model
 weights, Runpod credentials, registry credentials, or private lab data.
 
 This bundle is a CUDA worker for Meta's official Muse Glimmer GGUF release. It
-runs `llama-server` directly as a Runpod Serverless load-balancing worker, so
-the exposed port is a real OpenAI-compatible HTTP API rather than a queue
-wrapper around a custom JSON handler.
+runs `llama-server` directly and supports both Runpod Serverless
+load-balancing workers and manually managed Pods. The exposed port is a real
+OpenAI-compatible HTTP API rather than a queue wrapper around a custom JSON
+handler.
 
 ## What is pinned
 
-- llama.cpp release `b10375`, built with CUDA. Muse Glimmer support landed in
-  llama.cpp before `b10353`; b10375 is the newer release selected for the
-  worker.
+- A CUDA-enabled `llama-server` runtime. The published base image is pinned by
+  digest in `Dockerfile`; rebuilders can replace `BASE_IMAGE` with a compatible
+  CUDA/llama.cpp image. The repository does not assume one GPU vendor SKU.
 - Hugging Face repo: `meta-models/Muse-Glimmer-30B-GGUF`.
 - Main model: `Muse-Glimmer-30B-KQuant-Dynamic-Q4_K_XL.gguf`.
 - Vision projector: `mmproj-Muse-Glimmer-30B-Q4_K_M.gguf`.
@@ -51,9 +52,10 @@ Lab must execute tools in an explicit policy-controlled sandbox with approval
 and audit logging.
 
 Runpod load-balancing health checks use `/ping`; the bundled `proxy.py` owns
-that route and returns 204 while llama.cpp is loading and 200 once llama.cpp's
-`/health` is ready. All other routes, including streaming, are forwarded to
-llama.cpp on an internal port.
+that route and returns 204 while llama.cpp is loading, 200 once llama.cpp's
+`/health` is ready, and 503 if the child process exits. All other routes,
+including streaming, are forwarded to llama.cpp on an internal port. This
+keeps a failed child from appearing to be a healthy worker.
 
 ## Build locally
 
@@ -94,9 +96,10 @@ was made for validation and stopped before any build work because Docker's
 daemon is not accessible in this desktop session. No model download or
 inference was attempted.
 
-The image build requires network access to GitHub, Ubuntu packages, and
-Hugging Face's Python client. It compiles `llama-server`; it does not download
-the 22.7 GB of model artifacts until the worker starts with a mounted volume.
+The image build requires network access to the selected base image and package
+sources. It does not download model artifacts until the worker starts with a
+mounted volume. Runtime sizing is controlled by environment variables so the
+same image can be used on different GPU profiles.
 
 ## Read-only local smoke test
 
@@ -171,6 +174,9 @@ details, or request logs containing user data.
 
 See `CONTRIBUTING.md` for changes and `SECURITY.md` for private vulnerability
 reports.
+
+The unified gateway model registry and benchmark boundary are documented in
+[`docs/model-registry.md`](docs/model-registry.md).
 
 ## Exact assumptions and risks
 
