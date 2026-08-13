@@ -26,7 +26,7 @@ die() {
 : "${REASONING_STRENGTH:=high}"
 : "${DOWNLOAD_MODELS:=1}"
 
-[[ -x /opt/llama.cpp/build/bin/llama-server ]] || die "llama-server is missing from the image"
+[[ -x /opt/llama-server ]] || die "llama-server is missing from the image"
 
 if [[ ! -d /runpod-volume && "${ALLOW_EPHEMERAL_MODEL_CACHE:-0}" != "1" ]]; then
     die "Runpod network volume is not mounted at /runpod-volume; set ALLOW_EPHEMERAL_MODEL_CACHE=1 only for disposable tests"
@@ -66,7 +66,7 @@ else
 fi
 
 log "Starting llama.cpp server ${MODEL_ALIAS} on 0.0.0.0:${PORT}"
-export LLAMA_SERVER_BIN=/opt/llama.cpp/build/bin/llama-server
+export LLAMA_SERVER_BIN=/opt/llama-server
 export LLAMA_MODEL_PATH="${main_path}"
 export LLAMA_MMPROJ_PATH="${mmproj_path}"
 export LLAMA_DRAFT_PATH="${draft_path}"
