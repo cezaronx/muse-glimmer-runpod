@@ -243,13 +243,13 @@
       state.responseView = null; drawInspector();
       const response = await fetch('/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', 'X-Muse-Backend': backend, ...auth() }, body: JSON.stringify(payload) });
       const provenance = responseHeaders(response);
-      historyItem.status = response.status;
       historyItem.backend = provenance['x-muse-backend'] || (response.ok ? backend : 'unavailable');
       historyItem.requestId = provenance['x-muse-request-id'];
       historyItem.fallback = provenance['x-muse-fallback'] === 'true';
-      historyItem.latencyMs = Math.round(performance.now() - startedAt);
       saveHistory(); drawHistory();
       if (!response.ok) {
+        historyItem.status = response.status;
+        historyItem.latencyMs = Math.round(performance.now() - startedAt);
         const raw = await response.text();
         let payload = {};
         try { payload = raw ? JSON.parse(raw) : {}; } catch { payload = { error: { message: raw } }; }
@@ -271,6 +271,9 @@
         state.responseView = { status: response.status, headers: responseHeaders(response), body: payload };
         draw();
       }
+      historyItem.status = response.status;
+      historyItem.latencyMs = Math.round(performance.now() - startedAt);
+      saveHistory(); drawHistory();
       drawInspector();
       const selected = response.headers.get('x-muse-backend') || backend, fallback = response.headers.get('x-muse-fallback') === 'true' ? ' (fallback)' : '';
       status(`Backend: ${selected}${fallback}`);
@@ -306,3 +309,4 @@
 </script>
 </body>
 </html>
+
