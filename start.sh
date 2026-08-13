@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+trap 'status=$?; printf "[muse-glimmer] startup exited with status %s\n" "$status" >&2' EXIT
+
 log() {
     printf '[muse-glimmer] %s\n' "$*"
 }
@@ -26,13 +28,18 @@ die() {
 : "${REASONING_STRENGTH:=high}"
 : "${DOWNLOAD_MODELS:=1}"
 
+log "Entrypoint started"
+command -v python3 >/dev/null 2>&1 || die "python3 is missing from the image"
+command -v hf >/dev/null 2>&1 || die "hf CLI is missing from the image"
 [[ -x /opt/llama-server ]] || die "llama-server is missing from the image"
 
 if [[ ! -d /runpod-volume && "${ALLOW_EPHEMERAL_MODEL_CACHE:-0}" != "1" ]]; then
     die "Runpod network volume is not mounted at /runpod-volume; set ALLOW_EPHEMERAL_MODEL_CACHE=1 only for disposable tests"
 fi
 
+log "Using model directory ${MODEL_DIR}"
 mkdir -p "${MODEL_DIR}"
+log "Model directory is writable"
 
 main_path="${MODEL_DIR}/${MAIN_MODEL_FILE}"
 mmproj_path="${MODEL_DIR}/${MMPROJ_FILE}"

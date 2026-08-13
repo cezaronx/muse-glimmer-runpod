@@ -44,7 +44,11 @@ ENV DEBIAN_FRONTEND=${DEBIAN_FRONTEND} \
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
+        bash \
         libcurl4 \
+        libgcc-s1 \
+        libgomp1 \
+        libstdc++6 \
         python3 \
         python3-pip \
         util-linux \

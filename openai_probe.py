@@ -9,12 +9,31 @@ import json
 import os
 import sys
 import time
+from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 
 DEFAULT_ENDPOINT = "80ooydmc06vh70"
 DEFAULT_MODEL = "muse-glimmer-30b"
+
+
+def local_dotenv_key() -> str | None:
+    dotenv = Path(__file__).with_name(".env")
+    if not dotenv.is_file():
+        return None
+    for line in dotenv.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        name, value = line.split("=", 1)
+        if name.strip() not in {"RUNPOD_KEY", "RUNPOD_API_KEY"}:
+            continue
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+            value = value[1:-1]
+        return value or None
+    return None
 
 
 def request_json(url: str, token: str, payload: dict | None = None) -> tuple[int, dict | str]:
@@ -49,7 +68,12 @@ def main() -> int:
     parser.add_argument("--temperature", type=float, default=0.7)
     args = parser.parse_args()
 
-    token = os.environ.get("RUNPOD_API_KEY") or getpass.getpass("Runpod API key (hidden): ")
+    token = (
+        os.environ.get("RUNPOD_API_KEY")
+        or os.environ.get("RUNPOD_KEY")
+        or local_dotenv_key()
+        or getpass.getpass("Runpod API key (hidden): ")
+    )
     if not token:
         print("A Runpod API key is required; it is never written to the repository.", file=sys.stderr)
         return 2
