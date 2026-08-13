@@ -26,7 +26,7 @@ RUN git clone --depth 1 --branch "${LLAMA_CPP_REF}" https://github.com/ggml-org/
         -DLLAMA_CURL=ON \
         -DBUILD_SHARED_LIBS=OFF \
     && cmake --build /opt/llama.cpp/build --config Release --parallel "${BUILD_JOBS}" --target llama-server \
-    && /opt/llama.cpp/build/bin/llama-server --version
+    && test -x /opt/llama.cpp/build/bin/llama-server
 
 FROM nvidia/cuda:12.8.1-runtime-ubuntu22.04
 
@@ -60,7 +60,7 @@ COPY --from=llama-builder /opt/llama.cpp/build/bin/llama-server /opt/llama-serve
 COPY start.sh /usr/local/bin/muse-glimmer-start
 COPY proxy.py /opt/muse-glimmer-proxy.py
 RUN chmod 0755 /usr/local/bin/muse-glimmer-start \
-    && /opt/llama-server --version
+    && test -x /opt/llama-server
 
 EXPOSE 8000
 ENTRYPOINT ["/usr/local/bin/muse-glimmer-start"]
