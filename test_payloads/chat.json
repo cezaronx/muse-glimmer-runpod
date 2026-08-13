@@ -1,0 +1,17 @@
+{
+  "model": "muse-glimmer-30b",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a concise security-lab assistant. Reason internally and return the answer only."
+    },
+    {
+      "role": "user",
+      "content": "Reply with only the integer result of 17 * 23."
+    }
+  ],
+  "temperature": 1.0,
+  "top_p": 0.95,
+  "max_tokens": 256,
+  "stream": false
+}

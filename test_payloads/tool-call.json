@@ -1,0 +1,31 @@
+{
+  "model": "muse-glimmer-30b",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Use the weather tool for Brussels, Belgium. Do not answer from memory."
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_weather",
+        "description": "Get the current weather for a city.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "city": {"type": "string"},
+            "country": {"type": "string"}
+          },
+          "required": ["city", "country"],
+          "additionalProperties": false
+        }
+      }
+    }
+  ],
+  "tool_choice": "auto",
+  "parallel_tool_calls": false,
+  "max_tokens": 512,
+  "stream": false
+}
