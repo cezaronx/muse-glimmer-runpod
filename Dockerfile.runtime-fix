@@ -1,0 +1,10 @@
+FROM ghcr.io/cezaronx/muse-glimmer-runpod@sha256:879a4c8d344d644a2177bf93a14bb31dc4ced93b637c0c92e84eacbfa19b8631
+
+# The source-built base contains the hardware-compatible llama-server.
+# Add the runtime C/C++ and OpenMP libraries required to launch it.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libgcc-s1 \
+        libgomp1 \
+        libstdc++6 \
+    && rm -rf /var/lib/apt/lists/*
