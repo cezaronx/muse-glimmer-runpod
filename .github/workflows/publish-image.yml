@@ -6,17 +6,11 @@ on:
       tag:
         description: Image tag
         required: true
-        default: b10375
-      build_jobs:
-        description: Parallel CUDA compiler jobs
-        required: true
-        default: '4'
+        default: pod-startup-fix-20260813
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository_owner }}/muse-glimmer-runpod
-  LLAMA_CPP_REF: b10375
-  CUDA_ARCHITECTURES: 86;89;90
 
 jobs:
   publish:
@@ -54,10 +48,6 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.tag }}
-          build-args: |
-            LLAMA_CPP_REF=${{ env.LLAMA_CPP_REF }}
-            CUDA_ARCHITECTURES=${{ env.CUDA_ARCHITECTURES }}
-            BUILD_JOBS=${{ inputs.build_jobs }}
           cache-from: type=gha
           cache-to: type=gha,mode=min
 
