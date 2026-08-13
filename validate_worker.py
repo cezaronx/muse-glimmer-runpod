@@ -25,8 +25,15 @@ def main() -> None:
     build_script = (ROOT / "build-image.ps1").read_text(encoding="utf-8")
     publish_script = (ROOT / "publish-image.ps1").read_text(encoding="utf-8")
 
-    require(dockerfile, "ARG BASE_IMAGE=", ROOT / "Dockerfile")
-    require(dockerfile, "FROM ${BASE_IMAGE}", ROOT / "Dockerfile")
+    require(dockerfile, "FROM nvidia/cuda:12.8.1-devel-ubuntu22.04 AS llama-builder", ROOT / "Dockerfile")
+    require(dockerfile, "ARG LLAMA_CPP_REF=", ROOT / "Dockerfile")
+    require(dockerfile, "ARG CUDA_ARCHITECTURES=", ROOT / "Dockerfile")
+    require(dockerfile, "ARG BUILD_JOBS=", ROOT / "Dockerfile")
+    require(dockerfile, "CMAKE_CUDA_ARCHITECTURES", ROOT / "Dockerfile")
+    require(dockerfile, "-DGGML_CUDA=ON", ROOT / "Dockerfile")
+    require(dockerfile, "--target llama-server", ROOT / "Dockerfile")
+    require(dockerfile, "FROM nvidia/cuda:12.8.1-runtime-ubuntu22.04", ROOT / "Dockerfile")
+    require(dockerfile, "COPY --from=llama-builder", ROOT / "Dockerfile")
     require(dockerfile, "COPY proxy.py", ROOT / "Dockerfile")
     require(dockerfile, "llama-server", ROOT / "Dockerfile")
     for fragment in (
@@ -74,3 +81,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
