@@ -96,7 +96,7 @@ def is_streaming(request: Request, body: bytes) -> bool:
     "/{path:path}",
     methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
 )
-async def forward(path: str, request: Request) -> Response | StreamingResponse:
+async def forward(path: str, request: Request):
     if path == "ping":
         return await ping()
     if CLIENT is None:
